@@ -5,9 +5,3 @@ orange
 grapes
 passion fruit
 tomatoes
-
-some vegetables:
-cabbage
-brussels sprouts
-brocoli
-spring onions
