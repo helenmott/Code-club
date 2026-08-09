@@ -89,17 +89,10 @@ async function fetchDirections(origin, destination, waypointCoords = []) {
     throw new Error(`Directions API returned ${data.status}: ${data.error_message ?? '(no message)'}`);
   }
 
-  // Concatenate per-step polylines for maximum road detail
-  const points = [];
-  for (const leg of data.routes[0].legs) {
-    for (const step of leg.steps) {
-      const decoded = decodePolyline(step.polyline.points);
-      // Drop the first point of each continuation to avoid exact duplicates at junctions
-      if (points.length > 0) decoded.shift();
-      points.push(...decoded);
-    }
-  }
-  return points;
+  // Use the overview polyline — pre-simplified by Google, ideal for a
+  // whole-trip overview map. Step-by-step detail would add megabytes for
+  // no visible benefit at the zoom levels used here.
+  return decodePolyline(data.routes[0].overview_polyline.points);
 }
 
 const cache = {};
