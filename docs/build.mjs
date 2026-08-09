@@ -8,7 +8,7 @@
  * dependencies beyond the vendored Leaflet — drop the folder on any host.
  */
 
-import { writeFile, mkdir } from 'node:fs/promises';
+import { writeFile, mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -18,6 +18,10 @@ import {
 } from './data/itinerary.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
+
+// Populated at the start of main() from data/directions-cache.json if present.
+// fetch-directions.mjs writes this file; when absent, manual waypoints are used.
+let directionsCache = {};
 
 /* -------------------------------------------------------------- helpers -- */
 
@@ -504,7 +508,8 @@ function routeData() {
       label: leg.label,
       ferry: !!leg.ferry,
       detour: !!leg.detour,
-      points: leg.points,
+      // Prefer real road geometry from the Directions API cache when available
+      points: directionsCache[leg.label] ?? leg.points,
     })),
     waypoints,
   };
@@ -515,6 +520,17 @@ function routeData() {
 /* ------------------------------------------------------------------ run -- */
 
 async function main() {
+  // Load Google Maps Directions API cache if available
+  try {
+    const raw = await readFile(join(ROOT, 'data', 'directions-cache.json'), 'utf8');
+    directionsCache = JSON.parse(raw);
+    const count = Object.keys(directionsCache).length;
+    console.log(`Loaded directions cache (${count} leg${count === 1 ? '' : 's'}).`);
+  } catch {
+    console.log('No directions cache found — using manual waypoints from itinerary.mjs.');
+    console.log('Run `node fetch-directions.mjs` with a Google Maps API key to enable real road routes.');
+  }
+
   const written = [];
 
   const write = async (rel, contents) => {
